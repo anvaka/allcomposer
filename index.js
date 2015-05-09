@@ -1,57 +1,130 @@
-var rp = require('request-promise');
+/**
+ * Finds all dependencies save them into `outputFileName`
+ */
+var Crawler = require("crawler");
+var outputFileName = 'composer_packages.json';
 var fs = require('fs');
-var outputFileName = 'composer_packages_index.json';
-var query = 'http://packagist.org/search.json?per_page=100&q=&page=';
-var lastIndex = 0;
-var totalWorkers = 10;
+var semver = require('semver');
+
+// How many packages did we process so far?
 var total = 0;
-var activeWorkers = 0;
-var all = [];
-var done = false;
+// All packages are stored here:
+var results = [];
+// For some reason crawler fails with out of memory exception if you try load
+// all 60k requests. Crawling it in chunks, where each chunk is 3000 packages.
+// We will still do only 10 concurrent requests below. The chunk size is only
+// used for queueing.
+var chunkSize = 3000;
 
-console.log('Generating list of all php packages');
-getNext();
+var getAllPackages = require('./lib/getAllPackages');
+console.log('Loading list of all packages...');
+getAllPackages().then(crawlDependencies);
 
-function getNext() {
-  if (!done) {
-    for (var i = activeWorkers; i < totalWorkers; ++i) {
-      startWorker();
+return; // We are done here.
+
+function crawlDependencies(index) {
+  console.log('Loaded ' + index.length + ' packages to query');
+
+  var c = new Crawler({
+    maxConnections: 10,
+    // This will be called for each crawled page
+    callback: indexPackage,
+    onDrain: saveAndExit
+  });
+
+  queueChunk();
+
+  function queueChunk() {
+    if (!index.length) return;
+    if (index.length < chunkSize) {
+      console.log('Queueing last ' + index.length + ' packages');
+      c.queue(index.splice(0, index.length));
+    } else {
+      console.log('Queueing next ' + chunkSize + ' packages');
+      c.queue(index.splice(0, chunkSize));
     }
   }
-  if (done && activeWorkers === 0) {
-    all = Object.keys(all);
-    // everybody is done
-    fs.writeFileSync(outputFileName, JSON.stringify(all), 'utf8');
-    console.log('Done!');
-    console.log('Saved ' + all.length + ' packages into ' + outputFileName);
-    console.log('Now index dependencies using');
-    console.log(' node indexDependencies.js ./' + outputFileName);
+
+  function indexPackage(error, result) {
+    total += 1;
+    if (total % 100 === 0) {
+      console.log('Processed ' + total + ' packages');
+    }
+    if (total % chunkSize === 0) {
+      queueChunk();
+    }
+
+    var url = getUrl(result);
+    if (error) {
+      console.log('!! Error: ' + error + '; ' + url);
+      return;
+    }
+    var body;
+    try {
+      body = JSON.parse(result.body);
+    } catch (e) {
+      console.log('Could not parse json response: ' + result.body + '; ' + url);
+      return;
+    }
+    processBody(body);
+
+    function processBody(body) {
+      if (body.package) {
+        processPackage(body.package);
+      } else if (body.packages) {
+        for (var name in body.packages) {
+          if (body.packages.hasOwnProperty(name)) {
+            processVersion(body.packages[name]);
+          }
+        }
+      } else {
+        console.log('Something is wrong with body. No package or packages for ' + JSON.stringify(body));
+      }
+    }
+
+    function processPackage(pkg) {
+      var versions = pkg.versions;
+      if (!versions) {
+        console.log('Could not find versions for ' + url);
+        return;
+      }
+      processVersion(versions);
+    }
+
+    function processVersion(versions) {
+      var latest = versions['dev-master'] || findLatest(versions);
+
+      if (latest) results.push(latest);
+      else console.log('Could not find latest version for ' + url);
+    }
   }
 }
 
-function startWorker() {
-  lastIndex += 1;
-  activeWorkers += 1;
-  rp(query + lastIndex)
-    .then(join)
-    .catch(reportError);
+
+function getUrl(response) {
+  if (!response) return '';
+  return response.uri;
 }
 
-function reportError(err) {
-  console.error(err);
-  throw err;
+function saveAndExit() {
+  fs.writeFileSync(outputFileName, JSON.stringify(results), 'utf8');
+  console.log('Done!');
+  console.log('Saved ' + results.length + ' packages into ' + outputFileName);
+  console.log('Convert the downloaded file into graph format:');
+  console.log(' node toGraph.js ./' + outputFileName);
+  process.exit(0);
 }
 
-function join(res) {
-  activeWorkers -= 1;
-  res = JSON.parse(res);
-  var packages = res.results;
-  total += packages.length;
-  for (var i = 0; i < packages.length; ++i) {
-    var pkg = packages[i];
-    all[pkg.name] = 1;
-  }
-  console.log('Download ' + total + ' packages');
-  done = !res.next;
-  getNext();
+function findLatest(versions) {
+  var mostRecent = Object.keys(versions).sort(bySemver);
+  return versions[mostRecent[0]];
+}
+
+function bySemver(x, y) {
+  var xValid = semver.valid(x);
+  var yValid = semver.valid(y);
+  if (xValid && yValid) return semver.rcompare(x, y);
+  if (xValid && !yValid) return 1;
+  if (yValid && !xValid) return 1;
+  return 0;
 }
