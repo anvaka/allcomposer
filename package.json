@@ -17,5 +17,10 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/anvaka/allcomposer"
+  },
+  "dependencies": {
+    "crawler": "sylvinus/node-crawler",
+    "request-promise": "^0.4.2",
+    "semver": "^4.3.4"
   }
 }
