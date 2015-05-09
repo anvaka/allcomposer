@@ -20,6 +20,8 @@
   },
   "dependencies": {
     "crawler": "sylvinus/node-crawler",
+    "ngraph.forcelayout3d": "0.0.12",
+    "ngraph.graph": "0.0.11",
     "request-promise": "^0.4.2",
     "semver": "^4.3.4"
   }
