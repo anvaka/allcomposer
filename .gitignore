@@ -6,6 +6,7 @@ lib-cov
 *.out
 *.pid
 *.gz
+composer_*.json
 
 pids
 logs
