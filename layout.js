@@ -1,11 +1,7 @@
 var fs = require('fs');
 var path = require('path');
 
-var getGraph = require('./lib/convertToGraph.js');
-
-var inputFileName = process.argv[2] || 'composer_packages.json';
-var input = JSON.parse(fs.readFileSync(inputFileName, 'utf8'));
-var graph = getGraph(input);
+var graph = require('./lib/loadGraph.js')(process.argv[2] || 'composer_packages.json');
 var layout = require('ngraph.forcelayout3d')(graph);
 
 console.log('Graph loaded.');
