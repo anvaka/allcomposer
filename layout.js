@@ -12,6 +12,7 @@ console.log('Graph loaded.');
 console.log(graph.getNodesCount() + ' nodes; ' + graph.getLinksCount() + ' edges;');
 console.log('Starting layout...');
 for (var step = 0; step < 501; ++step) {
+  console.log('Step ' + step);
   layout.step();
   if (step % 5 === 0) {
     saveIteration(Math.round(step/5));
