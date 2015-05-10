@@ -12,5 +12,7 @@ pids
 logs
 results
 
+labels.json
+links.bin
 npm-debug.log
 node_modules
