@@ -110,8 +110,8 @@ function saveAndExit() {
   fs.writeFileSync(outputFileName, JSON.stringify(results), 'utf8');
   console.log('Done!');
   console.log('Saved ' + results.length + ' packages into ' + outputFileName);
-  console.log('Convert the downloaded file into graph format:');
-  console.log(' node toGraph.js ./' + outputFileName);
+  console.log('Now run layout algorithm using:');
+  console.log(' node layout.js');
   process.exit(0);
 }
 
