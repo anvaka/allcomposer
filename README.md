@@ -7,8 +7,8 @@ Crawls PHP composer packages database
 This simple steps will produce local version of the bower graph:
 
 ```
-git clone https://github.com/anvaka/allbower
-cd allbower
+git clone https://github.com/anvaka/allcomposer
+cd allcomposer
 npm install
 node index.js
 node layout.js
