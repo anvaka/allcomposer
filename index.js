@@ -26,11 +26,13 @@ function crawlDependencies(index) {
   console.log('Loaded ' + index.length + ' packages to query');
 
   var c = new Crawler({
+    jQuery: false,
     maxConnections: 10,
     // This will be called for each crawled page
     callback: indexPackage,
-    onDrain: saveAndExit
   });
+
+  c.on('drain', saveAndExit);
 
   queueChunk();
 
@@ -45,18 +47,20 @@ function crawlDependencies(index) {
     }
   }
 
-  function indexPackage(error, result) {
+  function indexPackage(error, result, done) {
     total += 1;
     if (total % 100 === 0) {
       console.log('Processed ' + total + ' packages');
     }
     if (total % chunkSize === 0) {
+      done();
       queueChunk();
     }
 
     var url = getUrl(result);
     if (error) {
       console.log('!! Error: ' + error + '; ' + url);
+      done();
       return;
     }
     var body;
@@ -64,9 +68,11 @@ function crawlDependencies(index) {
       body = JSON.parse(result.body);
     } catch (e) {
       console.log('Could not parse json response: ' + result.body + '; ' + url);
+      done();
       return;
     }
     processBody(body);
+    done();
 
     function processBody(body) {
       if (body.package) {
@@ -85,6 +91,7 @@ function crawlDependencies(index) {
     function processPackage(pkg) {
       var versions = pkg.versions;
       if (!versions) {
+        console.log(result);
         console.log('Could not find versions for ' + url);
         return;
       }
@@ -95,7 +102,10 @@ function crawlDependencies(index) {
       var latest = versions['dev-master'] || findLatest(versions);
 
       if (latest) results.push(latest);
-      else console.log('Could not find latest version for ' + url);
+      else {
+        console.log(result, versions);
+        console.log('Could not find latest version for ' + url);
+      }
     }
   }
 }
@@ -107,6 +117,7 @@ function getUrl(response) {
 }
 
 function saveAndExit() {
+  console.log('saving...');
   fs.writeFileSync(outputFileName, JSON.stringify(results), 'utf8');
   console.log('Done!');
   console.log('Saved ' + results.length + ' packages into ' + outputFileName);

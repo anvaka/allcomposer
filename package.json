@@ -19,7 +19,7 @@
     "url": "https://github.com/anvaka/allcomposer"
   },
   "dependencies": {
-    "crawler": "sylvinus/node-crawler",
+    "crawler": "github:sylvinus/node-crawler",
     "ngraph.forcelayout3d": "0.0.12",
     "ngraph.graph": "0.0.18",
     "ngraph.offline.layout": "^1.0.0",
