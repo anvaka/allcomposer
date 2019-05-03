@@ -53,7 +53,6 @@ function crawlDependencies(index) {
       console.log('Processed ' + total + ' packages');
     }
     if (total % chunkSize === 0) {
-      done();
       queueChunk();
     }
 
@@ -71,6 +70,7 @@ function crawlDependencies(index) {
       done();
       return;
     }
+
     processBody(body);
     done();
 
